@@ -136,6 +136,7 @@ include_directories(
 ## Declare a C++ executable
 # add_executable(ardrone_facefollow_node src/ardrone_facefollow_node.cpp)
 add_executable(facefollow src/facefollow.cpp)
+add_executable(facetest src/facetest.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -146,6 +147,7 @@ add_executable(facefollow src/facefollow.cpp)
 #   ${catkin_LIBRARIES}
 # )
 target_link_libraries(facefollow ${catkin_LIBRARIES})
+target_link_libraries(facetest ${catkin_LIBRARIES})
 
 #############
 ## Install ##
