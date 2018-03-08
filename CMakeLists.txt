@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   sensor_msgs
   geometry_msgs
+  genmsg
 )
 
 ## System dependencies are found with CMake's conventions
@@ -49,11 +50,11 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+ FILES
+ output2.msg
+ faceangle.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -70,10 +71,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+   DEPENDENCIES
+   std_msgs
+   geometry_msgs
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -137,6 +139,7 @@ include_directories(
 # add_executable(ardrone_facefollow_node src/ardrone_facefollow_node.cpp)
 add_executable(facefollow src/facefollow.cpp)
 add_executable(facetest src/facetest.cpp)
+add_executable(circle_node src/circle_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -148,6 +151,7 @@ add_executable(facetest src/facetest.cpp)
 # )
 target_link_libraries(facefollow ${catkin_LIBRARIES})
 target_link_libraries(facetest ${catkin_LIBRARIES})
+target_link_libraries(circle_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##
