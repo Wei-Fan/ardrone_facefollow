@@ -1,1 +1,1 @@
-int32 value
+std_msgs/UInt8 value
