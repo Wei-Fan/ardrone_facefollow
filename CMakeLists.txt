@@ -139,7 +139,7 @@ include_directories(
 # add_executable(ardrone_facefollow_node src/ardrone_facefollow_node.cpp)
 add_executable(facefollow src/facefollow.cpp)
 add_executable(facetest src/facetest.cpp)
-add_executable(circle_node src/circle_nodev2.cpp)
+add_executable(circle_node src/circle_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

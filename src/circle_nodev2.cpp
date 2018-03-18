@@ -101,7 +101,7 @@ void CircleNode::iteration(const ros::TimerEvent& e)
             cmd.linear.z=0.2*double(-dy/abs(level_y))/0.7;//Float32//support max(cmd.linear.z)=0.7m/s 
         }
         //distance control
-        facesize_p=(double(level_x/fullwidth-0.25))/0.25;
+        facesize_p=(double(level_x/fullwidth-0.1))/0.1;
         if(abs(facesize_p)<=0.05){
             cmd.linear.x = 0.0;
         }else{
@@ -150,7 +150,7 @@ void CircleNode::iteration(const ros::TimerEvent& e)
         }
         //altitude control
         
-        //cmd_pub.publish(cmd);
+        cmd_pub.publish(cmd);
     }
 }
 
