@@ -77,6 +77,10 @@ generate_messages(
    geometry_msgs
  )
 
+# Enable C++11
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+FIND_PACKAGE(OpenCV REQUIRED)
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
@@ -140,6 +144,7 @@ include_directories(
 add_executable(facefollow src/facefollow.cpp)
 add_executable(facetest src/facetest.cpp)
 add_executable(circle_node src/circle_node.cpp)
+add_executable(circle_test src/circle_test.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -152,6 +157,7 @@ add_executable(circle_node src/circle_node.cpp)
 target_link_libraries(facefollow ${catkin_LIBRARIES})
 target_link_libraries(facetest ${catkin_LIBRARIES})
 target_link_libraries(circle_node ${catkin_LIBRARIES})
+target_link_libraries(circle_test ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 #############
 ## Install ##
