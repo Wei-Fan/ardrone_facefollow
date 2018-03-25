@@ -28,7 +28,7 @@ std_msgs::UInt8 faceangle_value;
 //int faceangle_int;
 void face_center_cb(const ardrone_facefollow::output2::ConstPtr& center){
      face_current_center=*center;
-     dx = face_current_center.pose1.x/2 - face_current_center.pose2.x;
+     dx = -face_current_center.pose1.x/2 + face_current_center.pose2.x;
      dy = face_current_center.pose1.y/2 - face_current_center.pose2.y;
      level_x=face_current_center.pose3.x;
      level_y=face_current_center.pose3.y;
@@ -80,16 +80,24 @@ int main(int argc, char **argv){
             {
                 cmd.linear.z = 0.0;
             }else{
-            	cmd.linear.z=0.7*double(dy/abs(level_y))/0.7;//Float32//support max(cmd.linear.z)=0.7m/s 
+            	cmd.linear.z=0.7*fabs(double(dy)/double(level_y))/0.7;//Float32//support max(cmd.linear.z)=0.7m/s 
         	}
 	        //distance control
-	        facesize_p=(double(level_x/fullwidth)-0.1)/0.1;
-	        ROS_INFO("facesize_p : %f",facesize_p);
-	        if(fabs(facesize_p)<=0.01){
+	        facesize_p=(double(level_x)/double(fullwidth)-0.1)/0.1;
+	        //ROS_INFO("facesize_p : %f",facesize_p);
+	        if(fabs(facesize_p)<=0.05){
 	            cmd.linear.x = 0.0;
 	        }else{
-	            cmd.linear.x =-double(level_x/fullwidth)/0.1455381836;// max(cmd.linear.x)=0.1455381836m/s
+	            cmd.linear.x = -4*facesize_p;// max(cmd.linear.x)=0.1455381836m/s
 	        }
+
+	        if (fabs(dx) < 40)
+				continue;
+			else if(fabs(dx) < 150)
+			{
+				cmd.linear.y = -0.02*dx;
+				continue;
+			}
 	        //make sure the face is centered
 	        //frontalface case
 	        /*if(faceangle_value.data==2)//faceangle_value.value==2)

@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <fstream>
+#include <queue>
 #include <ardrone_facefollow/output2.h>
 #include <ardrone_facefollow/faceangle.h>
 //#include <fdetection/face_detection.h>
@@ -39,11 +40,19 @@ private:
 	int level_y;
 	int fullwidth;
     std_msgs::UInt8 faceangle_value;
+    std_msgs::UInt8 faceangle_norm;//filter
+    std::queue<std_msgs::UInt8> faceangle_queue;
+    int faceangle_sum;
 	// ardrone_facefollow::faceangle faceangle_value;
     // int faceangle_int;
 
 	geometry_msgs::Twist cmd;
     double facesize_p;//Float32
+
+    int count;
+    bool faceside_lock;
+    bool yaw_lock;
+    bool seeYourFace;
 };
 
 CircleNode::CircleNode(ros::NodeHandle& nh)
@@ -67,6 +76,13 @@ CircleNode::CircleNode(ros::NodeHandle& nh)
     level_y=0;
     fullwidth=0;
     facesize_p=0.0;
+
+    faceangle_norm.data = 1;
+    faceangle_sum = 0;
+    count = 0;
+    faceside_lock = false;
+    yaw_lock = false;
+    seeYourFace = false;
 }
 
 void CircleNode::face_center_cb(const ardrone_facefollow::output2::ConstPtr& center){
@@ -76,13 +92,56 @@ void CircleNode::face_center_cb(const ardrone_facefollow::output2::ConstPtr& cen
      level_x=face_current_center.pose3.x;
      level_y=face_current_center.pose3.y;
      fullwidth=face_current_center.pose1.x;
-     ROS_INFO("face_center_cb : %d",level_x);
+     seeYourFace = true;
+     //ROS_INFO("face_center_cb : %d",level_x);
 }
 
 void CircleNode::face_angle_cb(const std_msgs::UInt8 & value){
      faceangle_value.data = value.data;
      //faceangle_int = faceangle_value.data;
-     ROS_INFO("faceangle_value : %d",faceangle_value.data);
+     faceangle_queue.push(faceangle_value);
+     faceangle_sum = faceangle_sum + faceangle_value.data;
+
+     if (faceangle_queue.size() ==11)
+     {
+         faceangle_sum = faceangle_sum - faceangle_queue.front().data;
+         faceangle_queue.pop();
+         if (faceangle_sum < 6)
+         {
+            faceangle_norm.data = 0;
+         } else if (faceangle_sum < 18)
+         {
+            faceangle_norm.data = 1;
+         } else {
+            faceangle_norm.data = 2;
+         }
+     }
+     ROS_INFO("faceangle_norm : %d",faceangle_norm.data);
+     // int left_count = 0;
+     // int right_count = 0;
+     // int front_count = 0;
+     // for (int i = 0; i < faceangle_queue.size(); ++i)
+     // {
+     //     if (faceangle_queue(i).data == 0)
+     //     {
+     //         left_count++;
+     //     } else if (faceangle_queue(i).data == 1)
+     //     {
+     //         front_count++;
+     //     } else {
+     //        right_count++;
+     //     }
+     // }
+     // if (front_count > 2)
+     // {
+     //    faceangle_norm.data = 1;
+     // } else if (right_count <= left_count)
+     // {
+     //    faceangle_norm.data = 0;
+     // } else if (right_count > left_count)
+     // {
+     //    faceangle_norm.data = 2;
+     // }
 }
 
 void CircleNode::run(double frequency)
@@ -94,64 +153,102 @@ void CircleNode::run(double frequency)
 
 void CircleNode::iteration(const ros::TimerEvent& e)
 {
-    if ((level_x >0)&&(fullwidth>0)){
-        if(abs(dy)<=10){
-            cmd.linear.z = 0.0;
-        }else{
-            cmd.linear.z=0.2*double(-dy/abs(level_y))/0.7;//Float32//support max(cmd.linear.z)=0.7m/s 
-        }
-        //distance control
-        facesize_p=(double(level_x/fullwidth-0.1))/0.1;
-        if(abs(facesize_p)<=0.05){
-            cmd.linear.x = 0.0;
-        }else{
-            cmd.linear.x =-0.2*facesize_p/0.1455381836;// max(cmd.linear.x)=0.1455381836m/s
-        }
-        //make sure the face is centered
-        //frontalface case
-        if(faceangle_value.data==2)//faceangle_value.value==2)
-        {//the value is unknown
-            //ROS_INFO("Frontalface Detected!");
-            if(abs(dy)<=10){
-                cmd.linear.y = 0.0;
-            }
-            else{
-                cmd.linear.y=0.2*double(dx/abs(100))/0.1455381836;//Float32 level_x
-            }
-            cmd.angular.z=0.0;
-        }else if(faceangle_value.data==0)//faceangle_value.value==0)//leftsideface case
-        {
-            //ROS_INFO("Leftsideface Detected!");
-            cmd.linear.y=1.0;//support max(cmd.linear.x)=0.1455381836m/s
-            if(abs(dx)<=10){
-                cmd.angular.z=0.0;
-            }
-            else{
-                cmd.angular.z=double(18*dx/fullwidth);//Float32//support max(cmd.angular.z= 100 deg/s)
-            }
-            
-        }else if(faceangle_value.data==1)//faceangle_value.value==1)
-        {//rightsideface case
-             //ROS_INFO("Rightsideface Detected!");
-            cmd.linear.y=-1.0;
-            if(abs(dx)<=10){
-               cmd.angular.z=0.0;
-            }else{
-               cmd.angular.z=double(18*dx/fullwidth);//Float32
-            }
-        }else{
-            //ROS_INFO("Not Detected!");
-            cmd.linear.x = 0.0;
-            cmd.linear.y = 0.0;
-            cmd.linear.z = 0.0;
-            cmd.angular.x = 0.0;
-            cmd.angular.y = 0.0;
-            cmd.angular.z = 0.0;
-        }
-        //altitude control
-        
-        cmd_pub.publish(cmd);
+    cmd.linear.x = 0.0;
+    cmd.linear.y = 0.0;
+    cmd.linear.z = 0.0;
+    cmd.angular.x = 0.0;
+    cmd.angular.y = 0.0;
+    cmd.angular.z = 0.0;
+
+    
+    if (count == 10)
+    {
+        count = 0;
+        faceside_lock = true;
     }
+
+    if (seeYourFace)
+    {
+        if (!faceside_lock)//aim
+        {
+        
+            //altitude control
+            if(fabs(dy)<=30)
+            {
+                cmd.linear.z = 0.0;
+            }else{
+                cmd.linear.z=0.1*double(dy)/double(level_y);//Float32//support max(cmd.linear.z)=0.7m/s 
+            }
+
+            //distance control
+            facesize_p=(double(level_x)/double(fullwidth)-0.09)/0.09;
+            //ROS_INFO("facesize_p : %f",facesize_p);
+            if(fabs(facesize_p)<=0.05){
+                cmd.linear.x = 0.0;
+            }else{
+                cmd.linear.x = -0.6*facesize_p;// max(cmd.linear.x)=0.1455381836m/s
+            }
+
+            cmd.linear.y = 0.0025*dx;
+            
+            cmd_pub.publish(cmd);
+            count++;
+
+        } else {
+            //make sure the face is centered
+            //frontalface case
+            if(faceangle_norm.data==1)//faceangle_value.value==2)
+            {
+                faceside_lock = false;
+                ROS_INFO("~~~~~~~Frontalface Detected!");
+                // if(abs(dy)<=10){
+                //     cmd.linear.y = 0.0;
+                // }
+                // else{
+                //     cmd.linear.y=0.2*double(dx/abs(100))/0.1455381836;//Float32 level_x
+                // }
+                // cmd.angular.z=0.0;
+            }else if(faceangle_norm.data==0)//faceangle_value.value==0)//leftsideface case
+            {
+                if (fabs(dx)<30&&yaw_lock)
+                {
+                    yaw_lock = false;
+                }
+                ROS_INFO("~~~~~~~Leftsideface Detected!");
+                if(dx>-150&&!yaw_lock){
+                    cmd.linear.y=0.003*(dx+150);
+                    ROS_INFO("vyl : %f", cmd.linear.y);
+                }else{
+                    if (!yaw_lock)
+                    {
+                        yaw_lock = true;
+                    }
+                    cmd.angular.z=-0.001*fabs(dx);//Float32//support max(cmd.angular.z= 100 deg/s)
+                }
+                
+            }else if(faceangle_norm.data==2)//faceangle_value.value==1)
+            {//rightsideface case
+                if (fabs(dx)<30&&yaw_lock)
+                {
+                    yaw_lock = false;
+                }
+                ROS_INFO("~~~~~~~Rightsideface Detected!");
+                if(dx<150&&!yaw_lock){
+                    cmd.linear.y=0.003*(dx-150);
+                    ROS_INFO("vyr : %f", cmd.linear.y);
+                }
+                else{
+                    if (!yaw_lock)
+                    {
+                        yaw_lock = true;
+                    }
+                    cmd.angular.z=0.001*fabs(dx);//Float32//support max(cmd.angular.z= 100 deg/s)
+                }
+            }
+            cmd_pub.publish(cmd);   
+        }
+    }
+    seeYourFace = false;
 }
 
 int main(int argc, char** argv)
@@ -159,6 +256,6 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "circle_node");
     ros::NodeHandle n;
 	CircleNode c(n);
-	c.run(50);
+	c.run(10);
 	return 0;
 }
